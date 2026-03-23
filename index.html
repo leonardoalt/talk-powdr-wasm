@@ -257,6 +257,8 @@
 
   /* logo */
   .powdr-logo img { display: block; }
+  .theme-basic .powdr-logo .logo-light { display: none !important; }
+  .theme-basic .powdr-logo .logo-dark { display: block !important; }
 
   /* theme toggle */
   .theme-toggle {
@@ -278,7 +280,8 @@
 <section>
   <div style="margin-top: 0.8em;">
     <div class="powdr-logo" style="width: 360px; margin: 0 auto 0.8em;">
-      <img style="width:100%; height:auto;" src="powdr-logo.png">
+      <img class="logo-light" style="width:100%; height:auto;" src="powdr-logo.png">
+      <img class="logo-dark" style="width:100%; height:auto; display:none;" src="powdr-logo-dark.png">
     </div>
     <h2 style="font-size: 1.5em; margin-bottom: 0.6em;">Faster zkVM proofs via<br>WebAssembly and crush</h2>
     <p style="font-size: 0.8em; color: var(--white);">Leo Alt</p>
