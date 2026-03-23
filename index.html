@@ -53,6 +53,49 @@
   .theme-dark .bar .bar-val, .theme-dark .bar-ext { color: var(--white-90); }
   .theme-dark .bar.riscv { background: rgba(255,255,255,0.15); color: var(--white-90); }
   .theme-dark .metric .sub { color: var(--white-60); }
+
+  /* ---- basic (white bg, black text) ---- */
+  .reveal-viewport.theme-basic {
+    background: #ffffff;
+  }
+  .theme-basic .reveal, .theme-basic .reveal h2,
+  .theme-basic .reveal p, .theme-basic .reveal ul, .theme-basic .reveal ol,
+  .theme-basic .reveal li, .theme-basic .reveal strong,
+  .theme-basic .reveal h3, .theme-basic .dark, .theme-basic .dark-soft,
+  .theme-basic .dimmed, .theme-basic .small {
+    color: #111 !important;
+  }
+  .theme-basic .reveal .slide-number,
+  .theme-basic .reveal .controls { color: #999; }
+  .theme-basic .reveal .progress span { background: #111; }
+  .theme-basic .reveal table th { background: #111; color: #fff; }
+  .theme-basic .reveal table td { color: #111; border-bottom-color: #ddd; }
+  .theme-basic .metric { background: #f5f5f5; border-color: #ddd; }
+  .theme-basic .metric .value, .theme-basic .metric .label { color: #111 !important; }
+  .theme-basic .metric .sub { color: #666 !important; }
+  .theme-basic .arrow-down { color: #1a9e5a; }
+  .theme-basic pre code { background: #f5f5f5 !important; color: #111 !important; }
+  .theme-basic .asm-op { color: #c026d3; }
+  .theme-basic .asm-reg { color: #b45309; }
+  .theme-basic .asm-num { color: #15803d; }
+  .theme-basic .asm-comment { color: #999; }
+  .theme-basic .bar.crush { background: #111; }
+  .theme-basic .bar.riscv { background: #ddd; color: #666; }
+  .theme-basic .bar-label, .theme-basic .bar-label.hl,
+  .theme-basic .bar-ratio, .theme-basic .bar-ratio.dim,
+  .theme-basic .bar-ext, .theme-basic .bar-legend { color: #111 !important; }
+  .theme-basic .bar-legend .swatch-crush { background: #111; }
+  .theme-basic .bar-legend .swatch[style] { background: #ddd !important; }
+  .theme-basic .pipeline .stage { background: #f5f5f5; border-color: #ddd; color: #111; }
+  .theme-basic .pipeline .stage.final { background: #111; color: #fff; border-color: #111; }
+  .theme-basic .pipeline .arrow { background: #ccc; }
+  .theme-basic .pipeline .arrow::after { border-left-color: #ccc; }
+  .theme-basic .tag.reuse { background: #eee; color: #111; }
+  .theme-basic .tag.new { background: #111; color: #fff; }
+  .theme-basic .syscall-grid code { background: #f5f5f5; color: #111; }
+  .theme-basic .theme-toggle { background: rgba(0,0,0,0.06); border-color: #ccc; color: #111; }
+  .theme-basic .theme-toggle:hover { background: rgba(0,0,0,0.12); }
+
   .reveal { font-family: 'Space Grotesk', sans-serif; color: var(--white); }
   .reveal .slides section {
     text-align: center; padding: 30px 50px; box-sizing: border-box;
@@ -607,11 +650,17 @@ Reveal.initialize({
   transitionSpeed: 'fast'
 });
 
+var themes = ['light', 'dark', 'basic'];
+var currentTheme = 0;
 function toggleTheme() {
   var vp = document.querySelector('.reveal-viewport');
   var btn = document.querySelector('.theme-toggle');
-  vp.classList.toggle('theme-dark');
-  btn.textContent = vp.classList.contains('theme-dark') ? 'light' : 'dark';
+  vp.classList.remove('theme-dark', 'theme-basic');
+  currentTheme = (currentTheme + 1) % themes.length;
+  if (themes[currentTheme] === 'dark') vp.classList.add('theme-dark');
+  if (themes[currentTheme] === 'basic') vp.classList.add('theme-basic');
+  var next = themes[(currentTheme + 1) % themes.length];
+  btn.textContent = next;
 }
 </script>
 </body>
