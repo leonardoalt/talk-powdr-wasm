@@ -24,7 +24,35 @@
 
   .reveal-viewport {
     background: linear-gradient(160deg, #f2a4ec 0%, #ef91e7 40%, #e87cdf 100%);
+    transition: background 0.4s ease;
   }
+  .reveal-viewport.theme-dark {
+    background: linear-gradient(160deg, #1a0828 0%, #1e0a2e 40%, #250f38 100%);
+  }
+  .theme-dark .dark, .theme-dark .reveal strong,
+  .theme-dark .bar-label.hl, .theme-dark .bar-ratio,
+  .theme-dark .metric .value, .theme-dark .metric .label,
+  .theme-dark .chip-name, .theme-dark .bar-ext,
+  .theme-dark .reveal table td,
+  .theme-dark .reveal h3 { color: var(--pink); }
+  .theme-dark .dark-soft, .theme-dark .metric .sub,
+  .theme-dark .bar-ratio.dim { color: var(--pink-light); }
+  .theme-dark .reveal table th { background: var(--pink); color: var(--dark); }
+  .theme-dark .bar.crush { background: var(--pink); }
+  .theme-dark .tag.new { background: var(--pink); color: var(--dark); }
+  .theme-dark .syscall-grid code { background: rgba(239,145,231,0.15); }
+  .theme-dark .metric { border-color: rgba(239,145,231,0.25); background: rgba(239,145,231,0.08); }
+  .theme-dark .pipeline .stage { border-color: rgba(239,145,231,0.3); background: rgba(239,145,231,0.1); color: var(--white-90); }
+  .theme-dark .pipeline .stage.final { background: var(--pink); color: var(--dark); border-color: var(--pink); }
+  .theme-dark .pipeline .arrow { background: rgba(239,145,231,0.3); }
+  .theme-dark .pipeline .arrow::after { border-left-color: rgba(239,145,231,0.3); }
+  .theme-dark pre code { background: rgba(255,255,255,0.12) !important; }
+  .theme-dark .tag.reuse { background: rgba(239,145,231,0.15); color: var(--white-90); }
+  .theme-dark .bar-legend { color: var(--white-90); }
+  .theme-dark .bar-legend .swatch-crush { background: var(--pink); }
+  .theme-dark .bar .bar-val, .theme-dark .bar-ext { color: var(--white-90); }
+  .theme-dark .bar.riscv { background: rgba(255,255,255,0.15); color: var(--white-90); }
+  .theme-dark .metric .sub { color: var(--white-60); }
   .reveal { font-family: 'Space Grotesk', sans-serif; color: var(--white); }
   .reveal .slides section {
     text-align: center; padding: 30px 50px; box-sizing: border-box;
@@ -129,6 +157,7 @@
   }
   .bar-legend span { display: flex; align-items: center; gap: 4px; }
   .bar-legend .swatch { width: 12px; height: 12px; border-radius: 2px; }
+  .bar-legend .swatch-crush { background: var(--dark); }
   .bar-ratio {
     width: 55px; text-align: right; padding-left: 8px;
     color: var(--dark); font-weight: 700; flex-shrink: 0;
@@ -185,6 +214,17 @@
 
   /* logo */
   .powdr-logo img { display: block; }
+
+  /* theme toggle */
+  .theme-toggle {
+    position: fixed; top: 12px; right: 12px; z-index: 100;
+    background: rgba(0,0,0,0.2); border: 1px solid rgba(255,255,255,0.2);
+    color: var(--white); font-family: 'Space Grotesk', sans-serif;
+    font-size: 12px; padding: 5px 12px; border-radius: 20px;
+    cursor: pointer; backdrop-filter: blur(4px);
+    transition: background 0.2s;
+  }
+  .theme-toggle:hover { background: rgba(0,0,0,0.35); }
 </style>
 </head>
 <body>
@@ -396,7 +436,7 @@
   <p class="small" style="margin-bottom: 0.3em;">Per-chip breakdown: <strong>LoadStore dominates</strong></p>
   <div class="bar-chart">
     <div class="bar-legend">
-      <span><div class="swatch" style="background:var(--dark);"></div> crush</span>
+      <span><div class="swatch swatch-crush"></div> crush</span>
       <span><div class="swatch" style="background:var(--white-30);"></div> RISC-V</span>
     </div>
     <div class="bar-row">
@@ -448,7 +488,7 @@
   <p class="small" style="margin-bottom: 0.3em;">Same pattern: <strong>LoadStore is the dominant win</strong></p>
   <div class="bar-chart">
     <div class="bar-legend">
-      <span><div class="swatch" style="background:var(--dark);"></div> crush</span>
+      <span><div class="swatch swatch-crush"></div> crush</span>
       <span><div class="swatch" style="background:var(--white-30);"></div> RISC-V</span>
     </div>
     <div class="bar-row">
@@ -552,6 +592,8 @@
 </div>
 </div>
 
+<button class="theme-toggle" onclick="toggleTheme()">dark</button>
+
 <script src="https://cdn.jsdelivr.net/npm/reveal.js@5.1.0/dist/reveal.js"></script>
 <script>
 Reveal.initialize({
@@ -564,6 +606,13 @@ Reveal.initialize({
   transition: 'fade',
   transitionSpeed: 'fast'
 });
+
+function toggleTheme() {
+  var vp = document.querySelector('.reveal-viewport');
+  var btn = document.querySelector('.theme-toggle');
+  vp.classList.toggle('theme-dark');
+  btn.textContent = vp.classList.contains('theme-dark') ? 'light' : 'dark';
+}
 </script>
 </body>
 </html>
