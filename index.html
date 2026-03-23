@@ -1,0 +1,568 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>powdr-wasm: Faster zkVM Proofs via WebAssembly</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/reveal.js@5.1.0/dist/reveal.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/reveal.js@5.1.0/dist/theme/white.css">
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;600&display=swap');
+
+  :root {
+    --pink: #ef91e7;
+    --pink-light: #f2a4ec;
+    --dark: #1e0a2e;
+    --dark-soft: rgba(30,10,46,0.7);
+    --white: #ffffff;
+    --white-90: rgba(255,255,255,0.92);
+    --white-60: rgba(255,255,255,0.6);
+    --white-30: rgba(255,255,255,0.3);
+    --white-12: rgba(255,255,255,0.12);
+    --glass: rgba(0,0,0,0.12);
+  }
+
+  .reveal-viewport {
+    background: linear-gradient(160deg, #f2a4ec 0%, #ef91e7 40%, #e87cdf 100%);
+  }
+  .reveal { font-family: 'Space Grotesk', sans-serif; color: var(--white); }
+  .reveal .slides section {
+    text-align: center; padding: 30px 50px; box-sizing: border-box;
+  }
+  .reveal .slide-number { color: var(--white-60); font-family: 'Space Grotesk', sans-serif; }
+  .reveal .controls { color: var(--white); }
+  .reveal .progress span { background: var(--white); }
+
+  /* typography */
+  .reveal h2 {
+    font-size: 1.35em; font-weight: 700; text-transform: none;
+    letter-spacing: -0.01em; margin-bottom: 0.5em; color: var(--white);
+  }
+  .reveal h3 {
+    font-size: 0.85em; font-weight: 600; color: var(--dark-soft);
+    text-transform: none; margin-bottom: 0.4em;
+  }
+  .reveal p { font-size: 0.72em; line-height: 1.5; color: var(--white-90); }
+  .reveal ul, .reveal ol {
+    display: inline-block; text-align: left;
+    font-size: 0.72em; line-height: 1.6; margin: 0; color: var(--white-90);
+  }
+  .reveal li { margin-bottom: 0.2em; }
+  .reveal strong { color: var(--dark); font-weight: 700; }
+
+  /* tables */
+  .reveal table {
+    margin: 0.5em auto; border-collapse: collapse; font-size: 0.62em; width: auto;
+  }
+  .reveal table th {
+    background: var(--dark); color: var(--white);
+    padding: 8px 18px; font-weight: 600; text-align: left;
+  }
+  .reveal table td {
+    padding: 6px 18px; border-bottom: 1px solid var(--white-30); text-align: left;
+    color: var(--dark-soft);
+  }
+
+  /* code */
+  .reveal pre {
+    width: auto; max-width: 620px; margin: 0.5em auto; box-shadow: none;
+  }
+  .reveal pre code {
+    font-family: 'JetBrains Mono', monospace;
+    padding: 0.7em 1em; border-radius: 8px;
+    background: var(--dark); line-height: 1.55;
+    font-size: 0.62em; display: block; text-align: left;
+    color: var(--white-90);
+  }
+  .asm-op { color: #f8b4f0; font-weight: 600; }
+  .asm-reg { color: #ffe082; }
+  .asm-num { color: #a5d6a7; }
+  .asm-comment { color: rgba(255,255,255,0.4); font-style: italic; }
+
+  /* utility */
+  .small { font-size: 0.62em; }
+  .dimmed { color: var(--white-60); }
+  .dark { color: var(--dark); }
+  .dark-soft { color: var(--dark-soft); }
+
+  /* metric cards */
+  .metrics { display: flex; justify-content: center; gap: 18px; margin: 0.5em 0; flex-wrap: wrap; }
+  .metric {
+    background: var(--glass); border: 1px solid var(--white-30);
+    border-radius: 12px; padding: 16px 22px; min-width: 150px; text-align: center;
+  }
+  .metric .label {
+    font-size: 0.5em; color: var(--dark-soft);
+    text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 2px;
+  }
+  .metric .value { font-size: 1.6em; font-weight: 800; color: var(--dark); }
+  .metric .sub { font-size: 0.45em; color: var(--dark-soft); margin-top: 2px; }
+
+  /* bar chart */
+  .bar-chart {
+    display: inline-block; text-align: left; width: 75%; max-width: 650px; margin: 0.5em auto;
+  }
+  .bar-row { display: flex; align-items: center; margin-bottom: 10px; font-size: 0.58em; }
+  .bar-label {
+    width: 100px; text-align: right; padding-right: 12px;
+    color: var(--white-60); font-weight: 500; flex-shrink: 0; font-size: 0.95em;
+  }
+  .bar-label.hl { color: var(--dark); font-weight: 700; transform: translateX(-16px); }
+  .bar-track { flex: 1; display: flex; flex-direction: column; gap: 3px; min-width: 0; }
+  .bar {
+    height: 20px; border-radius: 3px;
+    display: flex; align-items: center; justify-content: flex-end;
+    padding: 0 8px; font-size: 0.8em; font-weight: 600;
+    color: var(--white); box-sizing: border-box; white-space: nowrap;
+    overflow: hidden;
+  }
+  .bar.crush { background: var(--dark); }
+  .bar.riscv { background: var(--white-30); color: var(--dark-soft); }
+  /* For narrow bars: hide text inside, show after via wrapper */
+  .bar-with-label { display: flex; align-items: center; gap: 6px; }
+  .bar-with-label .bar { flex-shrink: 0; }
+  .bar-with-label .bar-ext { font-size: 0.8em; font-weight: 600; color: var(--dark-soft); white-space: nowrap; }
+  .bar-legend {
+    display: flex; gap: 16px; font-size: 0.5em; margin-bottom: 6px;
+    margin-left: 112px; color: var(--dark-soft);
+  }
+  .bar-legend span { display: flex; align-items: center; gap: 4px; }
+  .bar-legend .swatch { width: 12px; height: 12px; border-radius: 2px; }
+  .bar-ratio {
+    width: 55px; text-align: right; padding-left: 8px;
+    color: var(--dark); font-weight: 700; flex-shrink: 0;
+  }
+  .bar-ratio.dim { color: var(--white-60); font-weight: 500; }
+
+  /* pipeline */
+  .pipeline {
+    display: flex; align-items: center; justify-content: center;
+    gap: 0; margin: 0.6em 0; flex-wrap: wrap;
+  }
+  .pipeline .stage {
+    background: var(--glass); border: 1px solid var(--white-30);
+    padding: 8px 16px; border-radius: 8px; font-size: 0.58em; font-weight: 600;
+    color: var(--dark-soft);
+  }
+  .pipeline .stage.final {
+    background: var(--dark); color: var(--white); border-color: var(--dark);
+  }
+  .pipeline .arrow {
+    width: 28px; height: 2px; background: var(--white-30); position: relative;
+    margin: 0 2px; flex-shrink: 0;
+  }
+  .pipeline .arrow::after {
+    content: ''; position: absolute; right: -1px; top: -4px;
+    border: 5px solid transparent; border-left: 6px solid var(--white-30);
+  }
+
+  /* tags */
+  .tag {
+    display: inline-block; padding: 1px 8px; border-radius: 10px;
+    font-size: 0.7em; font-weight: 600;
+  }
+  .tag.reuse { background: var(--white-12); color: var(--dark-soft); }
+  .tag.new { background: var(--dark); color: var(--white); }
+
+  /* two col */
+  .two-col {
+    display: flex; justify-content: center; gap: 30px;
+    text-align: left; margin: 0.4em auto; max-width: 90%;
+  }
+  .two-col .col { flex: 1; min-width: 0; }
+
+  /* syscall grid */
+  .syscall-grid {
+    display: flex; flex-wrap: wrap; justify-content: center;
+    gap: 5px; margin: 0.3em auto; max-width: 90%;
+  }
+  .syscall-grid code {
+    font-family: 'JetBrains Mono', monospace;
+    background: var(--dark); padding: 3px 8px; border-radius: 4px;
+    font-size: 0.5em; color: var(--white-90);
+  }
+
+  /* logo */
+  .powdr-logo img { display: block; }
+</style>
+</head>
+<body>
+<div class="reveal">
+<div class="slides">
+
+<!-- 1: Title -->
+<section>
+  <div style="margin-top: 0.8em;">
+    <div class="powdr-logo" style="width: 360px; margin: 0 auto 0.8em;">
+      <img style="width:100%; height:auto;" src="powdr-logo.png">
+    </div>
+    <h2 style="font-size: 1.5em; margin-bottom: 0.6em;">Faster zkVM proofs via<br>WebAssembly and crush</h2>
+    <p style="font-size: 0.8em; color: var(--white);">Leo Alt</p>
+    <p style="font-size: 0.6em; color: var(--white-60);">leo@powdrlabs.com</p>
+  </div>
+</section>
+
+<!-- 2: TL;DR -->
+<section>
+  <h2><span class="dark">1.5x</span> faster proofs than RISC-V</h2>
+  <table>
+    <tr><th>Benchmark</th><th>Proof Time</th><th>Trace Cells</th></tr>
+    <tr><td>Keccak (25k iters)</td><td><strong>1.58x</strong> faster</td><td><strong>1.62x</strong> fewer</td></tr>
+    <tr><td>Reth (block 24171384)</td><td><strong>1.45x</strong> faster</td><td><strong>1.56x</strong> fewer</td></tr>
+  </table>
+  <ul style="margin-top: 0.5em;">
+    <li>No precompiles used in either case</li>
+    <li>Also: Go support (Geth/Keeper proven end-to-end)</li>
+  </ul>
+</section>
+
+<!-- 3: Problem -->
+<section>
+  <h2>The RISC-V problem: <span class="dark">register spilling</span></h2>
+  <ul>
+    <li>RISC-V has <strong>32 registers</strong></li>
+    <li>Compilers must spill registers to RAM constantly</li>
+    <li>In hardware: RAM is cheap, so this is fine</li>
+    <li>In zkVMs: <strong>memory is more expensive</strong></li>
+    <li>Registers are actually implemented in memory
+      <br><span class="small dimmed">(same address space in SP1, different in OpenVM)</span></li>
+  </ul>
+</section>
+
+<!-- 4: RISC-V asm -->
+<section>
+  <h2>Register spilling in practice</h2>
+  <p class="small dimmed" style="margin-bottom: 0.3em;">Keccak permutation in RISC-V assembly (snippet)</p>
+  <pre><code><span class="asm-op">STOREW</span> <span class="asm-reg">rd</span>=<span class="asm-num">28</span>, <span class="asm-reg">rs1</span>=<span class="asm-num">8</span>, <span class="asm-reg">imm</span>=<span class="asm-num">40</span>    <span class="asm-comment">-- spill to stack</span>
+<span class="asm-op">STOREW</span> <span class="asm-reg">rd</span>=<span class="asm-num">84</span>, <span class="asm-reg">rs1</span>=<span class="asm-num">8</span>, <span class="asm-reg">imm</span>=<span class="asm-num">24</span>    <span class="asm-comment">-- spill to stack</span>
+<span class="asm-op">LOADW</span>  <span class="asm-reg">rd</span>=<span class="asm-num">92</span>, <span class="asm-reg">rs1</span>=<span class="asm-num">8</span>, <span class="asm-reg">imm</span>=<span class="asm-num">108</span>   <span class="asm-comment">-- reload</span>
+<span class="asm-op">XOR</span>    <span class="asm-reg">rd</span>=<span class="asm-num">48</span>, <span class="asm-reg">rs1</span>=<span class="asm-num">92</span>, <span class="asm-reg">rs2</span>=<span class="asm-num">28</span>   <span class="asm-comment">-- actual work</span>
+<span class="asm-op">STOREW</span> <span class="asm-reg">rd</span>=<span class="asm-num">100</span>, <span class="asm-reg">rs1</span>=<span class="asm-num">8</span>, <span class="asm-reg">imm</span>=<span class="asm-num">76</span>  <span class="asm-comment">-- spill again</span>
+<span class="asm-op">STOREW</span> <span class="asm-reg">rd</span>=<span class="asm-num">104</span>, <span class="asm-reg">rs1</span>=<span class="asm-num">8</span>, <span class="asm-reg">imm</span>=<span class="asm-num">52</span>  <span class="asm-comment">-- spill again</span>
+<span class="asm-op">XOR</span>    <span class="asm-reg">rd</span>=<span class="asm-num">52</span>, <span class="asm-reg">rs1</span>=<span class="asm-num">104</span>, <span class="asm-reg">rs2</span>=<span class="asm-num">68</span> <span class="asm-comment">-- actual work</span></code></pre>
+  <p style="margin-top: 0.4em;">Most instructions are <strong>loads/stores</strong>, not computation!</p>
+</section>
+
+<!-- 5: crush asm -->
+<section>
+  <h2>Same code in <span class="dark">crush</span></h2>
+  <p class="small dimmed" style="margin-bottom: 0.3em;">Keccak permutation in crush assembly (snippet)</p>
+  <pre><code><span class="asm-op">XOR_64</span> <span class="asm-reg">r54</span>, <span class="asm-reg">r29</span>, <span class="asm-reg">r31</span>
+<span class="asm-op">XOR_64</span> <span class="asm-reg">r54</span>, <span class="asm-reg">r54</span>, <span class="asm-reg">r27</span>
+<span class="asm-op">XOR_64</span> <span class="asm-reg">r54</span>, <span class="asm-reg">r54</span>, <span class="asm-reg">r25</span>
+<span class="asm-op">XOR_64</span> <span class="asm-reg">r60</span>, <span class="asm-reg">r54</span>, <span class="asm-reg">r23</span>
+<span class="asm-op">SLL_64</span> <span class="asm-reg">r54</span>, <span class="asm-reg">r60</span>, <span class="asm-num">1</span>
+<span class="asm-op">SRL_64</span> <span class="asm-reg">r58</span>, <span class="asm-reg">r60</span>, <span class="asm-num">63</span>
+<span class="asm-op">OR_64</span>  <span class="asm-reg">r56</span>, <span class="asm-reg">r54</span>, <span class="asm-reg">r58</span></code></pre>
+  <ul style="margin-top: 0.4em;">
+    <li>Pure computation, no spilling</li>
+    <li>Registers r3..r84 used directly: as many as the frame needs</li>
+  </ul>
+</section>
+
+<!-- 6: Why not RISC-V -->
+<section>
+  <h2>Why not just specialize RISC-V?</h2>
+  <h3>LLVM-based approaches</h3>
+  <ol>
+    <li style="margin-bottom: 0.5em;">Build a zkVM-aware LLVM backend (e.g. Valida)
+      <br><span class="dimmed">-> monumental effort</span></li>
+    <li>Hack LLVM's RISC-V backend for infinite registers
+      <br><span class="dimmed">-> very invasive change on a large codebase</span></li>
+  </ol>
+</section>
+
+<!-- 7: What about WASM -->
+<section>
+  <h2>What about <span class="dark">WebAssembly</span>?</h2>
+  <p style="margin-bottom: 0.4em;">WebAssembly already gives us most of what we want:</p>
+  <ul>
+    <li>Portable program format</li>
+    <li>Standardized runtimes</li>
+    <li>Preserves <strong>control flow</strong></li>
+    <li>Preserves <strong>local accesses</strong> (locals + stack)</li>
+    <li>Bonus: <strong>64-bit</strong> instructions</li>
+  </ul>
+</section>
+
+<!-- 8: crush -->
+<section>
+  <h2><span class="dark">crush</span></h2>
+  <p>Lightweight compiler from WebAssembly to a zk-friendly ISA</p>
+  <ul style="margin: 0.3em 0 0.5em;">
+    <li>Start from WASM, not LLVM</li>
+    <li>Flatten WASM stack + locals into <strong>infinite registers</strong></li>
+    <li>All register accesses relative to a <strong>frame pointer</strong></li>
+    <li>Frame sizes known at compile time</li>
+    <li>Well-defined compiler passes (DAG-based pipeline)</li>
+  </ul>
+  <div class="pipeline">
+    <div class="stage">WASM</div>
+    <div class="arrow"></div>
+    <div class="stage">BlockTree</div>
+    <div class="arrow"></div>
+    <div class="stage">DAG</div>
+    <div class="arrow"></div>
+    <div class="stage">Optimized DAG</div>
+    <div class="arrow"></div>
+    <div class="stage final">Flat Assembly</div>
+  </div>
+</section>
+
+<!-- 9: crush ISA -->
+<section>
+  <h2>crush ISA overview</h2>
+  <p style="margin-bottom: 0.3em;">Core instructions are extremely similar to RISC-V</p>
+  <table>
+    <tr><th>Category</th><th>Instructions</th></tr>
+    <tr><td>Arithmetic</td><td>ADD, SUB, AND, OR, XOR <span class="dimmed">(32 & 64-bit)</span></td></tr>
+    <tr><td>Multiply/Divide</td><td>MUL, DIV, REM</td></tr>
+    <tr><td>Shifts</td><td>SLL, SRL, SRA</td></tr>
+    <tr><td>Memory</td><td>LOADW, STOREW</td></tr>
+    <tr><td>Comparison</td><td>LT, LE, GT, GE, EQ, NEQ</td></tr>
+    <tr><td>Constants</td><td>CONST32</td></tr>
+    <tr><td>Control flow</td><td>JUMP, JUMP_IF, CALL, RET</td></tr>
+  </table>
+</section>
+
+<!-- 10: crush vs RISC-V -->
+<section>
+  <h2>crush vs RISC-V</h2>
+  <h3>Key differences</h3>
+  <ul>
+    <li>Frame pointer (FP) register: all accesses are <strong>FP-relative</strong></li>
+    <li>FP changes with callstack (CALL, RETURN)</li>
+    <li><strong>Infinite registers</strong> per frame</li>
+    <li>Read-write registers with liveness-based register allocation</li>
+  </ul>
+</section>
+
+<!-- 11: powdr-wasm -->
+<section>
+  <h2><span class="dark">powdr-wasm</span> & OpenVM extension</h2>
+  <p style="margin-bottom: 0.4em;">Implements crush as an OpenVM extension</p>
+  <div class="two-col">
+    <div class="col">
+      <h3>Re-used RISC-V chips</h3>
+      <p class="small dimmed">Minimal changes, mainly FP handling</p>
+      <ul style="font-size: 0.68em;">
+        <li><span class="tag reuse">reuse</span> base_alu (add, sub, and, or, xor)</li>
+        <li><span class="tag reuse">reuse</span> mul, divrem</li>
+        <li><span class="tag reuse">reuse</span> shifts</li>
+        <li><span class="tag reuse">reuse</span> loadstore</li>
+        <li><span class="tag reuse">reuse</span> comparisons</li>
+      </ul>
+    </div>
+    <div class="col">
+      <h3>New chips</h3>
+      <ul style="font-size: 0.68em; margin-top: 1.4em;">
+        <li><span class="tag new">new</span> call</li>
+        <li><span class="tag new">new</span> jump</li>
+        <li><span class="tag new">new</span> const</li>
+      </ul>
+      <p class="small dimmed" style="margin-top: 1em;">GPU tracegen also re-uses RISC-V code heavily</p>
+    </div>
+  </div>
+</section>
+
+<!-- 12: Keccak results -->
+<section>
+  <h2>Keccak results</h2>
+  <p class="small dimmed">25,000 Keccak iterations - powdr-wasm vs OpenVM RISC-V</p>
+  <div class="metrics">
+    <div class="metric">
+      <div class="label">Proof Time</div>
+      <div class="value">1.58x</div>
+      <div class="sub">76.7s vs 120.8s</div>
+    </div>
+    <div class="metric">
+      <div class="label">Trace Cells</div>
+      <div class="value">1.62x</div>
+      <div class="sub">32.5B vs 52.7B</div>
+    </div>
+    <div class="metric">
+      <div class="label">Segments</div>
+      <div class="value">1.71x</div>
+      <div class="sub">45 vs 77</div>
+    </div>
+  </div>
+  <p class="small dimmed" style="margin-top: 0.3em;">GPU: NVIDIA 4090, no precompiles</p>
+</section>
+
+<!-- 13: Keccak per-chip -->
+<section>
+  <h2>Where do the savings come from? <span class="small dimmed">Keccak</span></h2>
+  <p class="small" style="margin-bottom: 0.3em;">Per-chip breakdown: <strong>LoadStore dominates</strong></p>
+  <div class="bar-chart">
+    <div class="bar-legend">
+      <span><div class="swatch" style="background:var(--dark);"></div> crush</span>
+      <span><div class="swatch" style="background:var(--white-30);"></div> RISC-V</span>
+    </div>
+    <div class="bar-row">
+      <div class="bar-label hl">LoadStore</div>
+      <div class="bar-track">
+        <div class="bar-with-label"><div class="bar crush" style="width: 16%; min-width: 16%;"></div><span class="bar-ext">2.4B</span></div>
+        <div class="bar riscv" style="width: 100%;">15.0B</div>
+      </div>
+      <div class="bar-ratio">6.16x</div>
+    </div>
+    <div class="bar-row">
+      <div class="bar-label">ALU</div>
+      <div class="bar-track">
+        <div class="bar crush" style="width: 71%;">20.1B</div>
+        <div class="bar riscv" style="width: 100%;">28.2B</div>
+      </div>
+      <div class="bar-ratio dim">1.41x</div>
+    </div>
+  </div>
+  <p style="margin-top: 0.4em;">LoadStore savings = <strong>62%</strong> of total cell reduction</p>
+</section>
+
+<!-- 14: Reth results -->
+<section>
+  <h2>Reth results</h2>
+  <p class="small dimmed">Reth verifying Ethereum mainnet block 24171384</p>
+  <div class="metrics">
+    <div class="metric">
+      <div class="label">Proof Time</div>
+      <div class="value">1.45x</div>
+      <div class="sub">239.3s vs 348.1s</div>
+    </div>
+    <div class="metric">
+      <div class="label">Trace Cells</div>
+      <div class="value">1.56x</div>
+      <div class="sub">106.9B vs 166.5B</div>
+    </div>
+    <div class="metric">
+      <div class="label">Segments</div>
+      <div class="value">1.50x</div>
+      <div class="sub">141 vs 211</div>
+    </div>
+  </div>
+</section>
+
+<!-- 15: Reth per-chip -->
+<section>
+  <h2>Where do the savings come from? <span class="small dimmed">Reth</span></h2>
+  <p class="small" style="margin-bottom: 0.3em;">Same pattern: <strong>LoadStore is the dominant win</strong></p>
+  <div class="bar-chart">
+    <div class="bar-legend">
+      <span><div class="swatch" style="background:var(--dark);"></div> crush</span>
+      <span><div class="swatch" style="background:var(--white-30);"></div> RISC-V</span>
+    </div>
+    <div class="bar-row">
+      <div class="bar-label hl">LoadStore</div>
+      <div class="bar-track">
+        <div class="bar-with-label"><div class="bar crush" style="width: 22%; min-width: 22%;"></div><span class="bar-ext">13.9B</span></div>
+        <div class="bar riscv" style="width: 100%;">63.0B</div>
+      </div>
+      <div class="bar-ratio">4.53x</div>
+    </div>
+    <div class="bar-row">
+      <div class="bar-label">ALU</div>
+      <div class="bar-track">
+        <div class="bar crush" style="width: 84%;">46.6B</div>
+        <div class="bar riscv" style="width: 100%;">55.4B</div>
+      </div>
+      <div class="bar-ratio dim">1.19x</div>
+    </div>
+  </div>
+  <p style="margin-top: 0.4em;">LoadStore savings = <strong>82%</strong> of total cell reduction</p>
+  <p class="small dimmed">Even on a full Ethereum execution client, eliminating register spilling yields massive prover savings.</p>
+</section>
+
+<!-- 16: Go / Keeper -->
+<section>
+  <h2>Go support / <span class="dark">Keeper</span> (Geth)</h2>
+  <p style="margin-bottom: 0.3em;">WASM is a universal compilation target</p>
+  <ul style="margin-bottom: 0.4em;">
+    <li><strong>Go</strong> compiles to WASM via <strong>WASI</strong> runtime</li>
+    <li>Keeper = <strong>Geth</strong>-based guest for Ethereum block verification</li>
+  </ul>
+  <div class="metrics">
+    <div class="metric">
+      <div class="label">Proof Time</div>
+      <div class="value" style="font-size:1.3em;">827.6s</div>
+    </div>
+    <div class="metric">
+      <div class="label">Trace Cells</div>
+      <div class="value" style="font-size:1.3em;">352.0B</div>
+    </div>
+    <div class="metric">
+      <div class="label">Segments</div>
+      <div class="value" style="font-size:1.3em;">467</div>
+    </div>
+  </div>
+  <p class="small dimmed" style="margin-top: 0.15em; margin-bottom: 0.3em;">Hoodi block 1151683, no precompiles</p>
+  <h3 style="margin-bottom: 0.15em;">Implemented WASI syscalls</h3>
+  <div class="syscall-grid">
+    <code>args_sizes_get</code><code>args_get</code><code>environ_sizes_get</code><code>environ_get</code>
+    <code>fd_write</code><code>fd_read</code><code>fd_close</code><code>fd_fdstat_get</code>
+    <code>fd_fdstat_set_flags</code><code>fd_prestat_get</code><code>clock_time_get</code><code>random_get</code>
+    <code>proc_exit</code><code>poll_oneoff</code><code>fd_seek</code><code>fd_sync</code>
+    <code>sched_yield</code><code>path_open</code>
+  </div>
+</section>
+
+<!-- 17: Autoprecompiles -->
+<section>
+  <h2><span class="dark">Autoprecompiles</span></h2>
+  <ul>
+    <li>Currently being integrated</li>
+    <li><strong>WASM</strong> preserves high-level information that RISC-V loses:
+      <ul>
+        <li style="color:var(--white);"><strong>Register lifetime</strong> information</li>
+        <li style="color:var(--white);"><strong>Callstack control flow</strong> structure</li>
+      </ul>
+    </li>
+    <li>This info can propagate all the way to <strong>autoprecompile candidates</strong></li>
+  </ul>
+</section>
+
+<!-- 18: Future -->
+<section>
+  <h2>Future work</h2>
+  <ul>
+    <li>Autoprecompiles <span class="dimmed">(in progress)</span></li>
+    <li>zkVM circuit optimizations</li>
+    <li>crush compiler optimizations</li>
+    <li>crush formal verification</li>
+    <li>OpenVM v2 support</li>
+    <li>Hints <span class="dimmed">(non-deterministic advice to reduce guest cycle counts)</span></li>
+  </ul>
+</section>
+
+<!-- 19: Takeaway -->
+<section>
+  <h2>WASM + custom ISA/compiler =<br><span class="dark">clear advantages</span> over RISC-V for zkVMs</h2>
+  <ul style="margin-top: 0.5em;">
+    <li><strong>1.5x faster</strong> proofs from eliminating register spilling alone</li>
+    <li>LoadStore chip savings account for <strong>60-80%</strong> of the improvement</li>
+    <li>Universal language support (Rust, Go, Swift, ...)</li>
+    <li>Further gains expected from autoprecompiles and compiler optimizations</li>
+  </ul>
+  <p class="small" style="margin-top: 1.2em;">
+    <a href="https://github.com/powdr-labs/powdr-wasm" style="color: #7B68EE; text-decoration: none;">github.com/powdr-labs/powdr-wasm</a>
+    <br>
+    <a href="https://github.com/powdr-labs/crush" style="color: #7B68EE; text-decoration: none;">github.com/powdr-labs/crush</a>
+  </p>
+</section>
+
+</div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/reveal.js@5.1.0/dist/reveal.js"></script>
+<script>
+Reveal.initialize({
+  hash: true,
+  slideNumber: true,
+  width: 1280,
+  height: 720,
+  margin: 0.06,
+  center: true,
+  transition: 'fade',
+  transitionSpeed: 'fast'
+});
+</script>
+</body>
+</html>
