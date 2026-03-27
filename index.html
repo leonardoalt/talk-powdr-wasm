@@ -656,6 +656,18 @@ Reveal.initialize({
 
 var themes = ['light', 'dark', 'basic'];
 var currentTheme = 0;
+// Apply theme from URL param, e.g. ?theme=dark
+(function() {
+  var p = new URLSearchParams(window.location.search);
+  var t = p.get('theme');
+  if (t && themes.indexOf(t) > 0) {
+    currentTheme = themes.indexOf(t);
+    var vp = document.querySelector('.reveal-viewport');
+    var btn = document.querySelector('.theme-toggle');
+    vp.classList.add('theme-' + t);
+    btn.textContent = themes[(currentTheme + 1) % themes.length];
+  }
+})();
 function toggleTheme() {
   var vp = document.querySelector('.reveal-viewport');
   var btn = document.querySelector('.theme-toggle');
