@@ -660,13 +660,14 @@ var currentTheme = 0;
 (function() {
   var p = new URLSearchParams(window.location.search);
   var t = p.get('theme');
+  var btn = document.querySelector('.theme-toggle');
   if (t && themes.indexOf(t) > 0) {
     currentTheme = themes.indexOf(t);
     var vp = document.querySelector('.reveal-viewport');
-    var btn = document.querySelector('.theme-toggle');
     vp.classList.add('theme-' + t);
     btn.textContent = themes[(currentTheme + 1) % themes.length];
   }
+  if (p.has('print-pdf')) btn.style.display = 'none';
 })();
 function toggleTheme() {
   var vp = document.querySelector('.reveal-viewport');
